@@ -1,0 +1,22 @@
+# Build output
+*.o
+*.d
+*.elf
+*.hex
+*.bin
+Debug/
+Release/
+
+# IDE files
+.vscode/
+.idea/
+*.uvguix.*
+*.uvoptx
+
+# Private configuration
+firmware/Core/Inc/config.h
+web/js/config.js
+
+# Operating system files
+Thumbs.db
+.DS_Store
