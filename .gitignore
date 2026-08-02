@@ -1,22 +1,28 @@
-# Build output
+# 编译目录
+build/
+Debug/
+Release/
+cmake-build-*/
+
+# 编译产物
 *.o
-*.d
+*.obj
 *.elf
 *.hex
 *.bin
-Debug/
-Release/
+*.map
+*.list
+*.d
 
-# IDE files
+# 临时文件
+*.tmp
+*.log
+*.bak
+*.swp
+
+# VS Code本地设置
 .vscode/
-.idea/
-*.uvguix.*
-*.uvoptx
 
-# Private configuration
-firmware/Core/Inc/config.h
-web/js/config.js
-
-# Operating system files
-Thumbs.db
+# 系统文件
 .DS_Store
+Thumbs.db
