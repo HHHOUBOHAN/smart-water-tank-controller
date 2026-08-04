@@ -13,7 +13,7 @@ cmake-build-*/
 *.map
 *.list
 *.d
-
+CMake: Select Configure Preset
 # 临时文件
 *.tmp
 *.log
