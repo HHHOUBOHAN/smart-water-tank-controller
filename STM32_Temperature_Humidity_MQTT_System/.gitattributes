@@ -1,0 +1,6 @@
+# 前端网页文件夹不参与语言统计
+Web/* linguist-vendored=true
+# 硬件资料也不计入代码统计
+Hardware/* linguist-vendored=false
+# 固件C代码正常统计
+Firmware/* linguist-language=C

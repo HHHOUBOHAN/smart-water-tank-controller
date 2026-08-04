@@ -1,0 +1,11 @@
+﻿{
+    "name":  "STM32_TEMP_FAN_CTRL",
+    "version":  "1.0.0",
+    "description":  "STM32 temperature and humidity monitoring dashboard",
+    "main":  "index.js",
+    "scripts":  {
+                    "start":  "node index.js",
+                    "test":  "echo \"No automated tests yet\""
+                },
+    "private":  true
+}

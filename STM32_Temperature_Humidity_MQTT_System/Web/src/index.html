@@ -1,0 +1,172 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>STM32智能环境控制系统</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <noscript>
+    <div class="noscript-warning">
+      <div>
+        <h2>请启用 JavaScript</h2>
+        <p>STM32 智能环境控制系统需要 JavaScript 才能运行。</p>
+      </div>
+    </div>
+  </noscript>
+  <aside class="sidebar">
+    <a class="brand" href="#overview" aria-label="返回概览">
+      <span class="brand-mark"><i data-lucide="thermometer-sun"></i></span>
+      <span><b>环境云控</b><small>SMART ENVIRONMENT</small></span>
+    </a>
+
+    <nav class="side-nav" aria-label="页面导航">
+      <a class="nav-item active" href="#overview"><i data-lucide="layout-dashboard"></i><span>监控概览</span></a>
+      <a class="nav-item" href="#control"><i data-lucide="sliders-horizontal"></i><span>设备控制</span></a>
+      <a class="nav-item" href="#history"><i data-lucide="chart-no-axes-combined"></i><span>数据趋势</span></a>
+      <a class="nav-item" href="#connection"><i data-lucide="radio-tower"></i><span>网络连接</span></a>
+    </nav>
+
+    <div class="sidebar-device">
+      <span class="eyebrow">当前设备</span>
+      <strong>TEMP-FAN-001</strong>
+      <span>STM32F103C8T6</span>
+      <div class="side-online"><i></i>设备可用</div>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <div>
+        <p class="breadcrumb">设备管理 <span>/</span> 温湿度监测</p>
+        <h1>STM32智能环境控制系统</h1>
+      </div>
+      <div class="topbar-status">
+        <div class="update-info"><span>最后更新</span><strong id="updatedAt">等待设备数据</strong></div>
+        <div class="connection-chip"><i id="connectionDot" class="status-dot offline"></i><span id="connectionText">演示模式</span></div>
+      </div>
+    </header>
+
+    <section id="overview" class="device-hero">
+      <div class="hero-left">
+        <div class="device-icon"><i data-lucide="cpu"></i></div>
+        <div><p>设备名称</p><h2>温湿度监测与智能控制节点</h2><span>STM32F103 + AHT20 + ESP-01S</span></div>
+      </div>
+      <div class="hero-statuses">
+        <div><span>设备状态</span><b id="healthValue"><i data-lucide="circle-check"></i>运行正常</b></div>
+        <div><span>Wi-Fi连接</span><b id="wifiValue"><i data-lucide="wifi"></i>演示连接</b></div>
+      </div>
+    </section>
+
+    <section class="metric-grid" aria-label="实时数据">
+      <article class="metric-card temperature-card"><div class="metric-icon"><i data-lucide="thermometer"></i></div><div class="metric-meta"><span>当前温度</span><strong id="temperatureValue">--.-<small>℃</small></strong><em id="tempTrend">温度稳定</em></div><span class="metric-state" id="tempState">正常</span></article>
+      <article class="metric-card humidity-card"><div class="metric-icon"><i data-lucide="droplets"></i></div><div class="metric-meta"><span>当前湿度</span><strong id="humidityValue">--.-<small>%RH</small></strong><em id="humidityTrend">湿度稳定</em></div><span class="metric-state" id="humidityState">正常</span></article>
+      <article class="metric-card fan-card"><div class="metric-icon fan-icon"><i data-lucide="fan"></i></div><div class="metric-meta"><span>风扇状态</span><strong id="fanDutyValue">0<small>%</small></strong><em id="fanStateValue">风扇已关闭</em></div><span class="metric-state blue" id="fanModeBadge">自动</span></article>
+      <article class="metric-card alarm-card"><div class="metric-icon"><i data-lucide="shield-check"></i></div><div class="metric-meta"><span>报警状态</span><strong id="alarmValue">正常</strong><em id="modeValue">自动模式</em></div><span class="metric-state" id="alarmBadge">安全</span></article>
+    </section>
+
+
+    <section id="control" class="control-grid">
+      <article class="panel control-panel">
+        <div class="panel-head"><div><p class="eyebrow">本地与远程共用</p><h2>运行模式与风扇</h2></div><span class="panel-tag">控制中心</span></div>
+        <div class="mode-switch"><button id="autoButton" class="active"><i data-lucide="bot"></i><span>自动模式<small>按阈值控制</small></span></button><button id="manualButton"><i data-lucide="hand"></i><span>手动模式<small>开关控制</small></span></button></div>
+        <div class="fan-control"><div class="fan-control-title"><span>两线风扇手动设置</span><output id="fanSliderOutput">0%</output></div><input id="fanSlider" type="range" min="0" max="100" step="100" value="0" disabled /><div class="range-ticks"><span>0% 关闭</span><span>100% 全速</span></div><p class="hardware-note">当前为两线风扇，只允许设置 0% 或 100%；不支持精细调速。</p></div>
+        <div class="control-actions"><button id="sendFanButton" class="button primary" disabled><i data-lucide="send"></i>应用风扇开关</button><button id="muteButton" class="button secondary"><i data-lucide="volume-x"></i>蜂鸣器静音</button></div>
+        <div id="commandFeedback" class="command-feedback idle"><i data-lucide="message-circle"></i><span>控制命令状态：等待操作</span></div>
+      </article>
+      <article class="panel threshold-panel">
+        <div class="panel-head"><div><p class="eyebrow">报警策略</p><h2>阈值设置</h2></div><i data-lucide="settings-2" class="panel-head-icon"></i></div>
+        <div class="field-row"><label for="temperatureLimit"><i data-lucide="thermometer"></i>温度上限</label><div class="input-unit"><input id="temperatureLimit" type="number" min="0" max="80" step="0.5" value="30" /><span>℃</span></div></div>
+        <div class="field-row"><label for="humidityLimit"><i data-lucide="droplets"></i>湿度上限</label><div class="input-unit"><input id="humidityLimit" type="number" min="0" max="100" step="1" value="75" /><span>%RH</span></div></div>
+        <button id="saveThresholdButton" class="button primary full"><i data-lucide="save"></i>保存阈值到设备</button>
+        <div id="thresholdFeedback" class="command-feedback idle"><i data-lucide="message-circle"></i><span>阈值设置状态：等待操作</span></div>
+      </article>
+    </section>
+
+    <section class="dashboard-grid">
+      <article id="history" class="panel chart-panel">
+        <div class="panel-head"><div><p class="eyebrow">实时数据</p><h2>温湿度变化趋势</h2></div><div class="legend"><span><i class="line temperature-line"></i>温度</span><span><i class="line humidity-line"></i>湿度</span></div></div>
+        <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+        <div class="chart-footer"><span>最近 20 分钟</span><span>数据每 2 秒刷新一次</span></div>
+      </article>
+      <article class="panel status-panel">
+        <div class="panel-head"><div><p class="eyebrow">设备状态</p><h2>运行信息</h2></div><i data-lucide="activity" class="panel-head-icon"></i></div>
+        <dl class="status-list">
+          <div><dt>工作模式</dt><dd id="sideModeValue">自动模式</dd></div>
+          <div><dt>风扇状态</dt><dd id="sideFanValue">关闭</dd></div>
+          <div><dt>蜂鸣器</dt><dd id="buzzerValue">待机</dd></div>
+          <div><dt>传感器</dt><dd class="good"><i data-lucide="circle-check"></i>在线</dd></div>
+        </dl>
+        <div id="alertBox" class="alert-box"><i data-lucide="bell-ring"></i><div><b id="alertTitle">当前无报警</b><span id="alertText">温湿度都在安全范围内</span></div></div>
+      </article>
+    </section>
+
+    <section id="connection" class="bottom-grid">
+      <article class="panel broker-panel">
+        <div class="panel-head"><div><p class="eyebrow">网络配置</p><h2>MQTT Broker 连接</h2></div><span class="panel-tag">WebSocket</span></div>
+        <div class="broker-grid">
+          <label>
+            WebSocket 地址
+            <input
+              id="brokerUrl"
+              value=""
+              placeholder="自动生成 ws://当前电脑IP:9001"
+            />
+          </label>
+
+          <label>
+            设备编号
+            <input
+              id="deviceId"
+              value="TEMP-FAN-001"
+            />
+          </label>
+
+          <label>
+            用户名
+            <input
+              id="brokerUsername"
+              autocomplete="username"
+            />
+          </label>
+
+          <label>
+            密码
+            <input
+              id="brokerPassword"
+              type="password"
+              autocomplete="current-password"
+            />
+          </label>
+        </div>
+        <div class="broker-actions"><button id="connectButton" class="button primary"><i data-lucide="plug-zap"></i>连接 MQTT</button><button id="demoButton" class="button secondary"><i data-lucide="play"></i>使用演示数据</button></div>
+      </article>
+      <article class="panel log-panel">
+        <div class="panel-head"><div><p class="eyebrow">设备事件</p><h2>通信记录</h2></div><button id="clearLogButton" class="icon-button" title="清空记录"><i data-lucide="trash-2"></i></button></div>
+        <ul id="activityLog" class="log"></ul>
+      </article>
+    </section>
+  </main>
+
+  <template id="logItemTemplate"><li><time></time><span></span></li></template>
+  <script src="https://unpkg.com/lucide@0.468.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/mqtt@5.10.3/dist/mqtt.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
