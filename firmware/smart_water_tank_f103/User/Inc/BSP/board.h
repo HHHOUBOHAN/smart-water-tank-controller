@@ -1,3 +1,6 @@
+#include "main.h"
+
+
 //蜂鸣器
 #define BOARD_BUZZER_GPIO_PORT       BUZZER_CTRL_GPIO_Port
 #define BOARD_BUZZER_GPIO_PIN        BUZZER_CTRL_Pin
@@ -23,6 +26,6 @@
 
 
 
-
+ 
 
 

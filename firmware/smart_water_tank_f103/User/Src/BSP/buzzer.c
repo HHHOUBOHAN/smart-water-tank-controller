@@ -1,5 +1,5 @@
-#include "buzzer.h"
-#include "board.h"
+#include "BSP/buzzer.h"
+#include "BSP/board.h"
 //蜂鸣器当前状态 初始时初始值为OFF 程序刚启动时，软件认为蜂鸣器应当关闭。
 static Buzzer_State_t buzzer_state = BUZZER_STATE_OFF;
 
@@ -14,6 +14,7 @@ static GPIO_PinState Buzzer_StateToPinLevel( Buzzer_State_t state)
 
     return BOARD_BUZZER_INACTIVE_LEVEL;
 }
+
 //初始化
 void Buzzer_Init(void)
 {

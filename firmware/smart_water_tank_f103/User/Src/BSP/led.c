@@ -1,4 +1,6 @@
-#include "led.h"
+#include "main.h"
+#include "BSP/led.h"
+
 
 typedef struct
 {
@@ -40,7 +42,7 @@ static GPIO_PinState LED_StateToPinLevel( LED_TypeDef led, LED_State_t state)
     {
         return led_table[led].on_level;
     }
-    
+
     return led_table[led].off_level;
 }
 
@@ -49,7 +51,7 @@ void LED_Init(void)
 {
     LED_SetState(
         LED_RUN,
-        LED_STATE_OFF
+        LED_STATE_ON
     );
 
     LED_SetState(
@@ -157,13 +159,10 @@ void LED_Toggle(LED_TypeDef led)
     }
 }
 
-
-
-
-
-
-
-
-
-
   
+
+
+
+
+
+

@@ -4,65 +4,92 @@ cmake_minimum_required(VERSION 3.22)
 # This file is generated only once,
 # and is not re-generated if converter is called multiple times.
 #
-# User is free to modify the file as much as necessary
+# User is free to modify the file as much as necessary.
 #
 
-# Setup compiler settings
+# =============================================================================
+# Compiler settings
+# =============================================================================
+
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
 
+# =============================================================================
+# Build type
+# =============================================================================
 
-# Define the build type
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Debug")
 endif()
 
-# Set the project name
+# =============================================================================
+# Project settings
+# =============================================================================
+
 set(CMAKE_PROJECT_NAME smart_water_tank_f103)
 
-# Enable compile command to ease indexing with e.g. clangd
+# Generate compile_commands.json for STM32Cube clangd.
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
-# Core project settings
 project(${CMAKE_PROJECT_NAME})
-message("Build type: " ${CMAKE_BUILD_TYPE})
 
-# Enable CMake support for ASM and C languages
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+
+# Enable C and assembly language support.
 enable_language(C ASM)
 
-# Create an executable object type
+# =============================================================================
+# Main executable target
+# =============================================================================
+
 add_executable(${CMAKE_PROJECT_NAME})
 
-# Add STM32CubeMX generated sources
+# =============================================================================
+# STM32CubeMX-generated code
+# =============================================================================
+
 add_subdirectory(cmake/stm32cubemx)
 
-# Link directories setup
+# =============================================================================
+# User-owned code
+# =============================================================================
+
+if(NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/User/CMakeLists.txt")
+    message(FATAL_ERROR
+        "Missing User/CMakeLists.txt. "
+        "The User source-code module has not been initialized."
+    )
+endif()
+
+add_subdirectory(User)
+
+# =============================================================================
+# Optional library search directories
+# =============================================================================
+
 target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined library search paths
+    # Add user-defined library search directories here.
 )
 
-# Add sources to executable
-target_sources(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user sources here
-)
+# =============================================================================
+# Optional project macros
+# =============================================================================
 
-# Add include paths
-target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined include paths
-)
-
-# Add project symbols (macros)
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
-    # Add user defined symbols
+    # Add user-defined macros here.
 )
 
-# Remove wrong libob.a library dependency when using cpp files
+# Remove wrong libob.a dependency when C++ files are used.
 list(REMOVE_ITEM CMAKE_C_IMPLICIT_LINK_LIBRARIES ob)
 
-# Add linked libraries
+# =============================================================================
+# Linked libraries
+# =============================================================================
+
+# Keep the same target_link_libraries style as the original Cube-generated file.
 target_link_libraries(${CMAKE_PROJECT_NAME}
     stm32cubemx
 
-    # Add user defined libraries
+    # Add user-defined libraries here.
 )

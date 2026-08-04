@@ -1,6 +1,6 @@
 #ifndef LED_H
 #define LED_H
-
+#include <stdbool.h>
 #include "stdint.h"
 
 typedef enum
@@ -33,7 +33,7 @@ void LED_SetState(LED_TypeDef led, LED_State_t state);
 void LED_Toggle(LED_TypeDef led);
 
 //获取当前状态
-void LED_GetState(LED_TypeDef led, LED_State_t *state);
+bool LED_GetState(LED_TypeDef led, LED_State_t *state);
 
 
 #endif 
