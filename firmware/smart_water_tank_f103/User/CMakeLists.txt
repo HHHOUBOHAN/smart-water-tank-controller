@@ -25,3 +25,6 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 message(STATUS "User source root: ${CMAKE_CURRENT_LIST_DIR}/Src")
 message(STATUS "User include root: ${CMAKE_CURRENT_LIST_DIR}/Inc")
 message(STATUS "User C sources: ${USER_C_SOURCES}")
+
+
+

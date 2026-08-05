@@ -24,6 +24,26 @@
 
 
 
+/*
+*  继电器
+*  引脚配置：PB12 -> RELAY_CTRL
+*  有效电平：高电平有效
+*/
+#define BOARD_RELAY_GPIO_PORT         RELAY_CTRL_GPIO_Port
+#define BOARD_RELAY_GPIO_PIN          RELAY_CTRL_Pin
+
+#define BOARD_RELAY_ACTIVE_LEVEL      GPIO_PIN_SET
+#define BOARD_RELAY_INACTIVE_LEVEL    GPIO_PIN_RESET
+
+
+
+//按键
+
+
+
+
+
+
 
 
  
