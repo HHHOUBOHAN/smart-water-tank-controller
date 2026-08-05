@@ -1,7 +1,6 @@
 #ifndef LED_H
 #define LED_H
 #include <stdbool.h>
-#include "stdint.h"
 
 typedef enum
 {

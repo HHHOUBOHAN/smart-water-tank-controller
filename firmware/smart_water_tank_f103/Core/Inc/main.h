@@ -61,14 +61,14 @@ void Error_Handler(void);
 #define PRESS_OUT_GPIO_Port GPIOA
 #define PRESS_SCK_Pin GPIO_PIN_1
 #define PRESS_SCK_GPIO_Port GPIOA
-#define KEY1_Pin GPIO_PIN_4
-#define KEY1_GPIO_Port GPIOA
-#define KEY2_Pin GPIO_PIN_5
-#define KEY2_GPIO_Port GPIOA
-#define KEY3_Pin GPIO_PIN_6
-#define KEY3_GPIO_Port GPIOA
-#define KEY4_Pin GPIO_PIN_7
-#define KEY4_GPIO_Port GPIOA
+#define KEY_MODE_Pin GPIO_PIN_4
+#define KEY_MODE_GPIO_Port GPIOA
+#define KEY_START_Pin GPIO_PIN_5
+#define KEY_START_GPIO_Port GPIOA
+#define KEY_STOP_Pin GPIO_PIN_6
+#define KEY_STOP_GPIO_Port GPIOA
+#define KEY_MUTE_Pin GPIO_PIN_7
+#define KEY_MUTE_GPIO_Port GPIOA
 #define US_TRIG_Pin GPIO_PIN_0
 #define US_TRIG_GPIO_Port GPIOB
 #define US_ECHO_Pin GPIO_PIN_1
@@ -82,9 +82,9 @@ void Error_Handler(void);
 #define RUN_LED_GPIO_Port GPIOB
 #define FAULT_LED_Pin GPIO_PIN_15
 #define FAULT_LED_GPIO_Port GPIOB
-#define OLED_SCL_Pin GPIO_PIN_5
+#define OLED_SCL_Pin GPIO_PIN_6
 #define OLED_SCL_GPIO_Port GPIOB
-#define OLED_SDA_Pin GPIO_PIN_6
+#define OLED_SDA_Pin GPIO_PIN_7
 #define OLED_SDA_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */

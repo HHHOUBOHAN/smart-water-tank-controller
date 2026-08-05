@@ -56,13 +56,10 @@ void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOB, US_TRIG_Pin|RELAY_CTRL_Pin|BUZZER_CTRL_Pin|RUN_LED_Pin
                           |FAULT_LED_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, OLED_SCL_Pin|OLED_SDA_Pin, GPIO_PIN_SET);
-
-  /*Configure GPIO pins : PRESS_OUT_Pin KEY1_Pin KEY2_Pin KEY3_Pin
-                           KEY4_Pin */
-  GPIO_InitStruct.Pin = PRESS_OUT_Pin|KEY1_Pin|KEY2_Pin|KEY3_Pin
-                          |KEY4_Pin;
+  /*Configure GPIO pins : PRESS_OUT_Pin KEY_MODE_Pin KEY_START_Pin KEY_STOP_Pin
+                           KEY_MUTE_Pin */
+  GPIO_InitStruct.Pin = PRESS_OUT_Pin|KEY_MODE_Pin|KEY_START_Pin|KEY_STOP_Pin
+                          |KEY_MUTE_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
@@ -88,13 +85,6 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(US_ECHO_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : OLED_SCL_Pin OLED_SDA_Pin */
-  GPIO_InitStruct.Pin = OLED_SCL_Pin|OLED_SDA_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI1_IRQn, 0, 0);
