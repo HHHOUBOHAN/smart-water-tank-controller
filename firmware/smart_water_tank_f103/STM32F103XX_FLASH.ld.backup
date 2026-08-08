@@ -55,51 +55,9 @@ ENTRY(Reset_Handler)
 /* Specify the memory areas */
 MEMORY
 {
-    /*
-     * STM32F103C8T6 internal SRAM.
-     */
-    RAM (xrw) :
-        ORIGIN = 0x20000000,
-        LENGTH = 20K
-
-    /*
-     * Firmware program region.
-     *
-     * Only the first 62 KB can be used by the linker.
-     */
-    FLASH (rx) :
-        ORIGIN = 0x08000000,
-        LENGTH = 62K
-
-    /*
-     * Configuration storage region.
-     *
-     * The last two Flash pages, 2 KB in total.
-     */
-    FLASH_CONFIG (r) :
-        ORIGIN = 0x0800F800,
-        LENGTH = 2K
+RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 20K
+FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 64K
 }
-
-/*
- * Flash configuration region symbols.
- *
- * These symbols can be referenced from C code later.
- */
-__flash_config_start__ =
-    ORIGIN(FLASH_CONFIG);
-
-__flash_config_end__ =
-    ORIGIN(FLASH_CONFIG) + LENGTH(FLASH_CONFIG);
-
-__flash_config_page_size__ =
-    0x400;
-
-__flash_config_page_a__ =
-    ORIGIN(FLASH_CONFIG);
-
-__flash_config_page_b__ =
-    ORIGIN(FLASH_CONFIG) + 0x400;
 
 /* Highest address of the user mode stack */
 _estack = ORIGIN(RAM) + LENGTH(RAM);    /* end of RAM */

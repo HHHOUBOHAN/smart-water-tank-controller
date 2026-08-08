@@ -1,8 +1,10 @@
 
 #include "APP/app_command.h"
+#include "APP/app_state.h"//获取水泵状态
 #include "BSP/key.h"
 #include <stdint.h>
-#include "stdbool.h"
+#include <stddef.h>
+#include <stdbool.h>
 
 #define APP_COMMAND_QUEUE_SIZE 16
 
@@ -13,6 +15,7 @@ static uint8_t app_command_count;//有效命令数
 
 static uint32_t app_command_lost_count;
 static uint32_t app_command_cancelled_count;
+static bool stop_adjust_suppressed_until_release;//
 
 //判断命令类型是否合法
 static bool AppCommand_IsTypeValid(AppCommandType_t type)
@@ -156,6 +159,50 @@ static void AppCommand_HandleMainPageKey(
 }
 
 //处理参数设置页面的按键事件。
+static void AppCommand_HandleConfigPageKey(
+    const Key_Event_t *key_event 
+)
+{
+    bool pump_is_running;
+
+    if(key_event==NULL)
+    {
+        return;
+    }
+
+    pump_is_running = AppState_GetPumpCommand();
+
+    switch(key_event->key)
+    {
+        //短按下一项  长按保存退出
+        case KEY_ID_MODE:
+        {
+
+            break;
+        }
+        //短按：单加 长按：连加
+        case KEY_ID_START:
+        {
+            break;
+        }
+        //短按：单加 长按： 连加
+        case KEY_ID_STOP:
+        {
+            break;
+
+        }
+        //短按：不保存退出
+        case KEY_ID_MUTE:
+        {
+            break;
+
+        }
+        default:
+        {
+            break;
+        }
+    }
+}
 
 
 
