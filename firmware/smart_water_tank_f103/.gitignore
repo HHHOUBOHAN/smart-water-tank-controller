@@ -1,3 +1,7 @@
+# STM32 / VS Code 本机自动生成配置
+.clangd
+.settings/
+
 build
 mx.scratch
 !.settings
