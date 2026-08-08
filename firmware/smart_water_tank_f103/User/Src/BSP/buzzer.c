@@ -14,6 +14,7 @@ static GPIO_PinState Buzzer_StateToPinLevel( Buzzer_State_t state)
 
     return BOARD_BUZZER_INACTIVE_LEVEL;
 }
+//见滚这个
 
 //初始化
 void Buzzer_Init(void)
