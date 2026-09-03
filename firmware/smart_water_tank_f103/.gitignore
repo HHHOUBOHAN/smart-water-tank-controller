@@ -1,7 +1,27 @@
-# STM32 / VS Code 本机自动生成配置
-.clangd
-.settings/
+# Build products and local IDE state
+/build/
+/.settings/
+/mx.scratch/
+*.elf
+*.hex
+*.bin
+*.map
+*.list
+*.su
+*.o
+*.obj
+*.d
+*.dep
 
-build
-mx.scratch
-!.settings.settings/
+# Keil build products (the VS Code project does not use MDK-ARM)
+*.axf
+*.uvguix.*
+*.uvoptx
+*.uvprojx
+*.crf
+*.lnp
+*.sct
+*.htm
+*.lst
+*.bak
+*.backup

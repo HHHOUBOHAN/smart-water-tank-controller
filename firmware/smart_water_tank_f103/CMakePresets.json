@@ -6,9 +6,9 @@
             "hidden": true,
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/build/${presetName}",
-		    "toolchainFile": "${sourceDir}/cmake/gcc-arm-none-eabi.cmake",
+            "toolchainFile": "${sourceDir}/cmake/gcc-arm-none-eabi.cmake",
             "environment": {
-                "PATH": "C:/Users/34205/AppData/Local/stm32cube/bundles/ninja/1.13.2+st.1/bin;C:/Users/34205/AppData/Local/stm32cube/bundles/gnu-tools-for-stm32/14.3.1+st.2/bin;$penv{PATH}"
+                "PATH": "$penv{CUBE_BUNDLE_PATH}/ninja/1.13.2+st.1/bin;$penv{CUBE_BUNDLE_PATH}/gnu-tools-for-stm32/14.3.1+st.2/bin;$penv{PATH}"
             },
             "cacheVariables": {
             }

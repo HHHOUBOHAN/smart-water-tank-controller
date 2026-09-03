@@ -25,6 +25,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "APP/app.h"
 
 /* USER CODE END Includes */
 
@@ -93,6 +94,7 @@ int main(void)
   MX_USART1_UART_Init();
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
+  App_Init();
 
   /* USER CODE END 2 */
 
@@ -103,6 +105,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    App_Run();
   }
   /* USER CODE END 3 */
 }
@@ -147,6 +150,20 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  App_OnGpioExti(GPIO_Pin);
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+  App_OnUartRxComplete(huart);
+}
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+  App_OnUartError(huart);
+}
 
 /* USER CODE END 4 */
 
@@ -157,10 +174,28 @@ void SystemClock_Config(void)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+  volatile uint32_t delay;
+
   __disable_irq();
+
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+  HAL_GPIO_WritePin(GPIOB,
+                    RELAY_CTRL_Pin|BUZZER_CTRL_Pin|RUN_LED_Pin|FAULT_LED_Pin,
+                    GPIO_PIN_RESET);
+  GPIO_InitStruct.Pin = RELAY_CTRL_Pin|BUZZER_CTRL_Pin|RUN_LED_Pin|FAULT_LED_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
   while (1)
   {
+    HAL_GPIO_TogglePin(FAULT_LED_GPIO_Port, FAULT_LED_Pin);
+    for (delay = 0U; delay < 600000U; delay++)
+    {
+      __NOP();
+    }
   }
   /* USER CODE END Error_Handler_Debug */
 }
