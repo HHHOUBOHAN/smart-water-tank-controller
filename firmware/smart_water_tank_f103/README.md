@@ -2,6 +2,12 @@
 
 这是从最终可运行 V4.5 固件整理出的 VS Code 工程，目标芯片为 STM32F103xB，采用裸机分层架构，不使用 FreeRTOS。
 
+本版本已经进行第一轮低风险Flash优化，但仍属于V4.5优化基线。V5.0最终架构和分阶段编写计划见：
+
+- `docs/ARCHITECTURE_V5.md`
+- `docs/DEVELOPMENT_PLAN_V5.md`
+- `docs/FLASH_OPTIMIZATION.md`
+
 ## 目录职责
 
 - `Core/`：CubeMX 生成的启动入口、中断和外设初始化。
@@ -44,6 +50,8 @@
 - 恢复 EXTI1 与 USART1 的中断优先级关系。
 - 删除旧构建缓存、Keil 工程文件、重复启动文件和未使用的旧 Air780E 头文件。
 - 编译后自动生成 HEX 和 BIN。
+- Debug改用 `-Og`，Release启用 `-Os + LTO`。
+- 使用轻量整数解析器替换AT、MQTT和JSON接收路径中的 `sscanf()`。
 
 ## 为什么直接复制 Keil 的 User 文件会报错
 

@@ -1,6 +1,7 @@
 #include "PROTOCOL/command_codec.h"
 
-#include <stdio.h>
+#include "COMMON/text_parser.h"
+
 #include <string.h>
 
 static const char *CommandCodec_FindValue(const char *json, const char *key)
@@ -35,14 +36,12 @@ static bool CommandCodec_ParseUInt(const char *json,
                                    uint32_t *value)
 {
     const char *position = CommandCodec_FindValue(json, key);
-    unsigned long parsed;
 
     if ((position == 0) || (value == 0) ||
-        (sscanf(position, "%lu", &parsed) != 1))
+        !TextParser_ParseUInt32(&position, value))
     {
         return false;
     }
-    *value = (uint32_t)parsed;
     return true;
 }
 
@@ -51,14 +50,12 @@ static bool CommandCodec_ParseInt32(const char *json,
                                     int32_t *value)
 {
     const char *position = CommandCodec_FindValue(json, key);
-    long parsed;
 
     if ((position == 0) || (value == 0) ||
-        (sscanf(position, "%ld", &parsed) != 1))
+        !TextParser_ParseInt32(&position, value))
     {
         return false;
     }
-    *value = (int32_t)parsed;
     return true;
 }
 

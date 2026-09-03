@@ -1,6 +1,7 @@
 #include "NETWORK/ml307c_at.h"
 
-#include <stdio.h>
+#include "COMMON/text_parser.h"
+
 #include <string.h>
 
 bool ML307C_AT_HasError(const char *response)
@@ -36,17 +37,20 @@ bool ML307C_AT_IsAttached(const char *response)
 int ML307C_AT_ParseCmeError(const char *response)
 {
     const char *position;
-    int value;
+    int32_t value;
 
     if (response == 0)
     {
         return -1;
     }
     position = strstr(response, "+CME ERROR:");
-    if ((position != 0) &&
-        (sscanf(position, "+CME ERROR: %d", &value) == 1))
+    if (position != 0)
     {
-        return value;
+        position += strlen("+CME ERROR:");
+        if (TextParser_ParseInt32(&position, &value))
+        {
+            return (int)value;
+        }
     }
     return -1;
 }
@@ -54,18 +58,24 @@ int ML307C_AT_ParseCmeError(const char *response)
 int ML307C_AT_ParseSignalQuality(const char *response)
 {
     const char *position;
-    int signal;
-    int error_rate;
+    int32_t signal;
+    int32_t error_rate;
 
     if (response == 0)
     {
         return -1;
     }
     position = strstr(response, "+CSQ:");
-    if ((position != 0) &&
-        (sscanf(position, "+CSQ: %d,%d", &signal, &error_rate) == 2))
+    if (position != 0)
     {
-        return signal;
+        position += strlen("+CSQ:");
+        if (TextParser_ParseInt32(&position, &signal) &&
+            TextParser_ConsumeChar(&position, ',') &&
+            TextParser_ParseInt32(&position, &error_rate))
+        {
+            (void)error_rate;
+            return (int)signal;
+        }
     }
     return -1;
 }
@@ -73,35 +83,35 @@ int ML307C_AT_ParseSignalQuality(const char *response)
 int ML307C_AT_ParseRegistration(const char *response)
 {
     const char *position;
-    const char *format_with_mode;
-    const char *format_status_only;
-    int mode;
-    int status;
+    int32_t first;
+    int32_t status;
 
     if (response == 0)
     {
         return -1;
     }
     position = strstr(response, "+CEREG:");
-    format_with_mode = "+CEREG: %d,%d";
-    format_status_only = "+CEREG: %d";
     if (position == 0)
     {
         position = strstr(response, "+CGREG:");
-        format_with_mode = "+CGREG: %d,%d";
-        format_status_only = "+CGREG: %d";
     }
     if (position == 0)
     {
         return -1;
     }
-    if (sscanf(position, format_with_mode, &mode, &status) == 2)
+    position = strchr(position, ':');
+    if (position == 0)
     {
-        return status;
+        return -1;
     }
-    if (sscanf(position, format_status_only, &status) == 1)
+    position++;
+    if (!TextParser_ParseInt32(&position, &first))
     {
-        return status;
+        return -1;
     }
-    return -1;
+    if (TextParser_ConsumeChar(&position, ','))
+    {
+        return TextParser_ParseInt32(&position, &status) ? (int)status : -1;
+    }
+    return (int)first;
 }

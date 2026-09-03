@@ -89,7 +89,9 @@ static char network_command[NETWORK_COMMAND_SIZE];
 static char network_last_error[NETWORK_ERROR_SIZE];
 static char network_publish_topic[NETWORK_TOPIC_SIZE];
 static char network_publish_payload[NETWORK_PAYLOAD_SIZE];
-static char network_publish_label[4];
+/* C/S + uint8_t decimal value + terminator. The normal values are C1..C2
+ * and S1..S4; six bytes also makes the defensive uint8_t range safe. */
+static char network_publish_label[6];
 static char network_publish_trace[12];
 static char network_inbound_line[NETWORK_INBOUND_LINE_SIZE];
 static char network_inbound_topic[NETWORK_TOPIC_SIZE];

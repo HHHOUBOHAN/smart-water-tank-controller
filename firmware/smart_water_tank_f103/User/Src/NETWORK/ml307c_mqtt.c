@@ -1,5 +1,6 @@
 #include "NETWORK/ml307c_mqtt.h"
 
+#include "COMMON/text_parser.h"
 #include "NETWORK/ml307c_at.h"
 
 #include <stdio.h>
@@ -15,19 +16,24 @@ bool ML307C_MQTT_IsSupported(const char *response)
 int ML307C_MQTT_ParseConnectionState(const char *response, int connect_id)
 {
     const char *position;
-    int parsed_id;
-    int state;
+    int32_t parsed_id;
+    int32_t state;
 
     if (response == 0)
     {
         return -1;
     }
     position = strstr(response, "\"conn\",");
-    if ((position != 0) &&
-        (sscanf(position, "\"conn\",%d,%d", &parsed_id, &state) == 2) &&
-        (parsed_id == connect_id))
+    if (position != 0)
     {
-        return state;
+        position += strlen("\"conn\",");
+        if (TextParser_ParseInt32(&position, &parsed_id) &&
+            TextParser_ConsumeChar(&position, ',') &&
+            TextParser_ParseInt32(&position, &state) &&
+            (parsed_id == connect_id))
+        {
+            return (int)state;
+        }
     }
     return -1;
 }
@@ -35,18 +41,25 @@ int ML307C_MQTT_ParseConnectionState(const char *response, int connect_id)
 bool ML307C_MQTT_HasSubAck(const char *response, int connect_id)
 {
     const char *position;
-    int parsed_id;
-    int message_id;
-    int code;
+    int32_t parsed_id;
+    int32_t message_id;
+    int32_t code;
 
     if (response == 0)
     {
         return false;
     }
     position = strstr(response, "\"suback\",");
-    return (position != 0) &&
-           (sscanf(position, "\"suback\",%d,%d,%d",
-                   &parsed_id, &message_id, &code) == 3) &&
+    if (position == 0)
+    {
+        return false;
+    }
+    position += strlen("\"suback\",");
+    return TextParser_ParseInt32(&position, &parsed_id) &&
+           TextParser_ConsumeChar(&position, ',') &&
+           TextParser_ParseInt32(&position, &message_id) &&
+           TextParser_ConsumeChar(&position, ',') &&
+           TextParser_ParseInt32(&position, &code) &&
            (parsed_id == connect_id) && (code != 128);
 }
 
@@ -60,19 +73,30 @@ bool ML307C_MQTT_HasPubAckForMessage(const char *response,
                                      int message_id)
 {
     const char *position;
-    int parsed_id;
-    int parsed_message_id;
-    int duplicate;
+    int32_t parsed_id;
+    int32_t parsed_message_id;
+    int32_t duplicate;
 
     if (response == 0)
     {
         return false;
     }
     position = strstr(response, "\"puback\",");
-    return (position != 0) &&
-           (sscanf(position, "\"puback\",%d,%d,%d",
-                   &parsed_id, &parsed_message_id, &duplicate) == 3) &&
-           (parsed_id == connect_id) &&
+    if (position == 0)
+    {
+        return false;
+    }
+    position += strlen("\"puback\",");
+    if (!TextParser_ParseInt32(&position, &parsed_id) ||
+        !TextParser_ConsumeChar(&position, ',') ||
+        !TextParser_ParseInt32(&position, &parsed_message_id) ||
+        !TextParser_ConsumeChar(&position, ',') ||
+        !TextParser_ParseInt32(&position, &duplicate))
+    {
+        return false;
+    }
+    (void)duplicate;
+    return (parsed_id == connect_id) &&
            ((message_id < 0) || (parsed_message_id == message_id));
 }
 
@@ -80,21 +104,28 @@ int ML307C_MQTT_ParsePublishMessageId(const char *response,
                                       int connect_id)
 {
     const char *position;
-    int parsed_id;
-    int message_id;
-    unsigned int length;
+    int32_t parsed_id;
+    int32_t message_id;
+    uint32_t length;
 
     if (response == 0)
     {
         return -1;
     }
     position = strstr(response, "+MQTTPUB:");
-    if ((position != 0) &&
-        (sscanf(position, "+MQTTPUB: %d,%d,%u",
-                &parsed_id, &message_id, &length) == 3) &&
-        (parsed_id == connect_id))
+    if (position != 0)
     {
-        return message_id;
+        position += strlen("+MQTTPUB:");
+        if (TextParser_ParseInt32(&position, &parsed_id) &&
+            TextParser_ConsumeChar(&position, ',') &&
+            TextParser_ParseInt32(&position, &message_id) &&
+            TextParser_ConsumeChar(&position, ',') &&
+            TextParser_ParseUInt32(&position, &length) &&
+            (parsed_id == connect_id))
+        {
+            (void)length;
+            return (int)message_id;
+        }
     }
     return -1;
 }
@@ -103,11 +134,6 @@ bool ML307C_MQTT_HasTimeout(const char *response)
 {
     return (response != 0) &&
            (strstr(response, "\"timeout\",") != 0);
-}
-
-static const char *ML307C_MQTT_NextComma(const char *text)
-{
-    return (text == 0) ? 0 : strchr(text, ',');
 }
 
 bool ML307C_MQTT_ExtractPublish(const char *line,
@@ -119,10 +145,10 @@ bool ML307C_MQTT_ExtractPublish(const char *line,
 {
     const char *cursor;
     const char *end;
-    int parsed_id;
-    int message_id;
-    unsigned int total_length;
-    unsigned int fragment_length;
+    int32_t parsed_id;
+    int32_t message_id;
+    uint32_t total_length;
+    uint32_t fragment_length;
     size_t topic_length;
 
     if ((line == 0) || (topic == 0) || (topic_size < 2U) ||
@@ -136,7 +162,9 @@ bool ML307C_MQTT_ExtractPublish(const char *line,
         return false;
     }
     cursor += strlen("\"publish\",");
-    if (sscanf(cursor, "%d,%d", &parsed_id, &message_id) != 2)
+    if (!TextParser_ParseInt32(&cursor, &parsed_id) ||
+        !TextParser_ConsumeChar(&cursor, ',') ||
+        !TextParser_ParseInt32(&cursor, &message_id))
     {
         return false;
     }
@@ -144,13 +172,11 @@ bool ML307C_MQTT_ExtractPublish(const char *line,
     {
         return false;
     }
-    cursor = ML307C_MQTT_NextComma(cursor);
-    cursor = ML307C_MQTT_NextComma((cursor == 0) ? 0 : cursor + 1);
-    if ((cursor == 0) || (cursor[1] != '"'))
+    if (!TextParser_ConsumeChar(&cursor, ',') || (*cursor != '"'))
     {
         return false;
     }
-    cursor += 2;
+    cursor++;
     end = strchr(cursor, '"');
     if (end == 0)
     {
@@ -165,18 +191,14 @@ bool ML307C_MQTT_ExtractPublish(const char *line,
     topic[topic_length] = '\0';
 
     cursor = end + 1;
-    if ((*cursor != ',') ||
-        (sscanf(cursor + 1, "%u,%u", &total_length, &fragment_length) != 2))
+    if (!TextParser_ConsumeChar(&cursor, ',') ||
+        !TextParser_ParseUInt32(&cursor, &total_length) ||
+        !TextParser_ConsumeChar(&cursor, ',') ||
+        !TextParser_ParseUInt32(&cursor, &fragment_length) ||
+        !TextParser_ConsumeChar(&cursor, ','))
     {
         return false;
     }
-    cursor = ML307C_MQTT_NextComma(cursor + 1);
-    cursor = ML307C_MQTT_NextComma((cursor == 0) ? 0 : cursor + 1);
-    if (cursor == 0)
-    {
-        return false;
-    }
-    cursor++;
 
     /* Formal command/config messages are deliberately limited to one URC.
      * Reject fragmented or oversized data instead of executing partial JSON. */
