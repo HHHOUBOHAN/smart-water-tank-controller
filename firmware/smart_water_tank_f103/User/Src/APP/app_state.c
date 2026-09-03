@@ -27,6 +27,8 @@ static bool AppState_IsPageValid(AppPage_t page)
 //初始化
 void AppState_Init(uint32_t now_ms)
 {
+    /* The integrated threshold test starts in AUTO. MODE can still switch to
+     * MANUAL for direct START/STOP relay testing. */
     app_state.mode=APP_MODE_AUTO;
     app_state.run_state=APP_RUN_BOOT_WAIT_VALID;
     app_state.page= APP_PAGE_MAIN;

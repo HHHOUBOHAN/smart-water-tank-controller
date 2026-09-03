@@ -1,3 +1,6 @@
+#ifndef BSP_BOARD_H
+#define BSP_BOARD_H
+
 #include "main.h"
 
 
@@ -58,10 +61,17 @@
 #define BOARD_KEY_MUTE_GPIO_PIN        KEY_MUTE_Pin
 #define BOARD_KEY_MUTE_ACTIVE_LEVEL    GPIO_PIN_RESET
 
+#define BOARD_PRESS_OUT_GPIO_PORT      PRESS_OUT_GPIO_Port
+#define BOARD_PRESS_OUT_GPIO_PIN       PRESS_OUT_Pin
+#define BOARD_PRESS_SCK_GPIO_PORT      PRESS_SCK_GPIO_Port
+#define BOARD_PRESS_SCK_GPIO_PIN       PRESS_SCK_Pin
 
+#define BOARD_US_TRIG_GPIO_PORT        US_TRIG_GPIO_Port
+#define BOARD_US_TRIG_GPIO_PIN         US_TRIG_Pin
+#define BOARD_US_ECHO_GPIO_PORT        US_ECHO_GPIO_Port
+#define BOARD_US_ECHO_GPIO_PIN         US_ECHO_Pin
 
-//超声波
-
+#endif /* BSP_BOARD_H */
 
 
 

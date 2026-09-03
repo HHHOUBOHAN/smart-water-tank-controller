@@ -70,4 +70,3 @@ bool Relay_IsOn(void)
 {
     return (relay_state == RELAY_STATE_ON);
 }
- 

@@ -84,7 +84,7 @@ static const Key_Config_t key_config_table[KEY_ID_COUNT] =
     [KEY_ID_MODE] =
     {
         .debounce_ms         = 20,        //消抖时间
-        .long_press_ms       = 2000,      //长按阈值
+        .long_press_ms       = 1500,      //长按阈值
         .long_press_enabled  = true,      //是否开启长按 
         .repeat_delay_ms     = 0,         // 连发启动延迟
         .repeat_interval_ms  = 0,         // 连发间隔
@@ -98,7 +98,7 @@ static const Key_Config_t key_config_table[KEY_ID_COUNT] =
         .long_press_ms       = 0,
         .long_press_enabled  = false,
         .repeat_delay_ms     = 500,
-        .repeat_interval_ms  = 150,
+        .repeat_interval_ms  = 200,
         .repeat_enabled      = true
     },
 
@@ -109,7 +109,7 @@ static const Key_Config_t key_config_table[KEY_ID_COUNT] =
         .long_press_ms       = 0,
         .long_press_enabled  = false,
         .repeat_delay_ms     = 500,
-        .repeat_interval_ms  = 150,
+        .repeat_interval_ms  = 200,
         .repeat_enabled      = true
     },
 
@@ -117,7 +117,7 @@ static const Key_Config_t key_config_table[KEY_ID_COUNT] =
     [KEY_ID_MUTE] =
     {
         .debounce_ms         = 20,
-        .long_press_ms       = 2000,
+        .long_press_ms       = 1500,
         .long_press_enabled  = true,
         .repeat_delay_ms     = 0,
         .repeat_interval_ms  = 0,
@@ -258,7 +258,75 @@ void Key_Init(uint32_t now_ms)
 //按键扫描更新函数
 void Key_Update(uint32_t now_ms)
 {
-    
+    uint32_t index;
+
+    for (index = 0U; index < (uint32_t)KEY_ID_COUNT; index++)
+    {
+        const Key_Id_t key = (Key_Id_t)index;
+        const Key_Config_t *config = &key_config_table[index];
+        Key_Runtime_t *runtime = &key_runtime_table[index];
+        const bool pressed = Key_ReadPressed(key);
+
+        if (pressed != runtime->raw_pressed)
+        {
+            runtime->raw_pressed = pressed;
+            runtime->raw_changed_at_ms = now_ms;
+        }
+
+        if ((runtime->stable_pressed != runtime->raw_pressed) &&
+            Key_TimeElapsed(now_ms, runtime->raw_changed_at_ms, config->debounce_ms))
+        {
+            runtime->stable_pressed = runtime->raw_pressed;
+
+            if (runtime->stable_pressed)
+            {
+                runtime->pressed_at_ms = now_ms;
+                runtime->long_press_reported = false;
+                runtime->repeat_started = false;
+                runtime->next_repeat_at_ms = now_ms + config->repeat_delay_ms;
+
+                if (!runtime->suppress_until_release)
+                {
+                    Key_PushEvent(key, KEY_EVENT_DOWN, now_ms);
+                }
+            }
+            else
+            {
+                if (runtime->suppress_until_release)
+                {
+                    runtime->suppress_until_release = false;
+                }
+                else
+                {
+                    Key_PushEvent(key, KEY_EVENT_UP, now_ms);
+                    if (!runtime->long_press_reported && !runtime->repeat_started)
+                    {
+                        Key_PushEvent(key, KEY_EVENT_SHORT_PRESS, now_ms);
+                    }
+                }
+            }
+        }
+
+        if (!runtime->stable_pressed || runtime->suppress_until_release)
+        {
+            continue;
+        }
+
+        if (config->long_press_enabled && !runtime->long_press_reported &&
+            Key_TimeElapsed(now_ms, runtime->pressed_at_ms, config->long_press_ms))
+        {
+            runtime->long_press_reported = true;
+            Key_PushEvent(key, KEY_EVENT_LONG_PRESS, now_ms);
+        }
+
+        if (config->repeat_enabled &&
+            Key_TimeReached(now_ms, runtime->next_repeat_at_ms))
+        {
+            runtime->repeat_started = true;
+            Key_PushEvent(key, KEY_EVENT_REPEAT, now_ms);
+            runtime->next_repeat_at_ms = now_ms + config->repeat_interval_ms;
+        }
+    }
 }
 
 //获取按键事件 

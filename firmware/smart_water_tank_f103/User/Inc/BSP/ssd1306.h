@@ -133,6 +133,13 @@ typedef enum {
     SSD1306_ERR = 0x01  // Generic error.
 } SSD1306_Error_t;
 
+typedef enum {
+    SSD1306_UPDATE_IDLE = 0,
+    SSD1306_UPDATE_BUSY,
+    SSD1306_UPDATE_COMPLETE,
+    SSD1306_UPDATE_ERROR
+} SSD1306_UpdateStatus_t;
+
 // Struct to store transformations
 typedef struct {
     uint16_t CurrentX;
@@ -155,9 +162,12 @@ typedef struct {
 } SSD1306_Font_t;
 
 // Procedure definitions
-void ssd1306_Init(void);
+SSD1306_Error_t ssd1306_Init(void);
 void ssd1306_Fill(SSD1306_COLOR color);
 void ssd1306_UpdateScreen(void);
+void ssd1306_UpdateScreenBegin(void);
+SSD1306_UpdateStatus_t ssd1306_UpdateScreenStep(void);
+void ssd1306_UpdateScreenAbort(void);
 void ssd1306_DrawPixel(uint8_t x, uint8_t y, SSD1306_COLOR color);
 char ssd1306_WriteChar(char ch, SSD1306_Font_t Font, SSD1306_COLOR color);
 char ssd1306_WriteString(char* str, SSD1306_Font_t Font, SSD1306_COLOR color);

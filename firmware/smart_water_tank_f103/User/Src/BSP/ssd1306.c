@@ -3,7 +3,23 @@
 #include <stdlib.h>
 #include <string.h>  // For memcpy
 
+#define SSD1306_I2C_TIMEOUT_MS  20U
+#define SSD1306_I2C_CHUNK_SIZE  16U
+
 #if defined(SSD1306_USE_I2C)
+
+static HAL_StatusTypeDef ssd1306_WriteCommandStatus(uint8_t byte) {
+    return HAL_I2C_Mem_Write(&SSD1306_I2C_PORT, SSD1306_I2C_ADDR,
+                             0x00, 1, &byte, 1,
+                             SSD1306_I2C_TIMEOUT_MS);
+}
+
+static HAL_StatusTypeDef ssd1306_WriteDataStatus(uint8_t* buffer,
+                                                 size_t buff_size) {
+    return HAL_I2C_Mem_Write(&SSD1306_I2C_PORT, SSD1306_I2C_ADDR,
+                             0x40, 1, buffer, buff_size,
+                             SSD1306_I2C_TIMEOUT_MS);
+}
 
 void ssd1306_Reset(void) {
     /* for I2C - do nothing */
@@ -11,15 +27,36 @@ void ssd1306_Reset(void) {
 
 // Send a byte to the command register
 void ssd1306_WriteCommand(uint8_t byte) {
-    HAL_I2C_Mem_Write(&SSD1306_I2C_PORT, SSD1306_I2C_ADDR, 0x00, 1, &byte, 1, HAL_MAX_DELAY);
+    (void)ssd1306_WriteCommandStatus(byte);
 }
 
 // Send data
 void ssd1306_WriteData(uint8_t* buffer, size_t buff_size) {
-    HAL_I2C_Mem_Write(&SSD1306_I2C_PORT, SSD1306_I2C_ADDR, 0x40, 1, buffer, buff_size, HAL_MAX_DELAY);
+    (void)ssd1306_WriteDataStatus(buffer, buff_size);
 }
 
 #elif defined(SSD1306_USE_SPI)
+
+static HAL_StatusTypeDef ssd1306_WriteCommandStatus(uint8_t byte) {
+    HAL_StatusTypeDef status;
+    HAL_GPIO_WritePin(SSD1306_CS_Port, SSD1306_CS_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(SSD1306_DC_Port, SSD1306_DC_Pin, GPIO_PIN_RESET);
+    status = HAL_SPI_Transmit(&SSD1306_SPI_PORT, (uint8_t *)&byte, 1,
+                              SSD1306_I2C_TIMEOUT_MS);
+    HAL_GPIO_WritePin(SSD1306_CS_Port, SSD1306_CS_Pin, GPIO_PIN_SET);
+    return status;
+}
+
+static HAL_StatusTypeDef ssd1306_WriteDataStatus(uint8_t* buffer,
+                                                 size_t buff_size) {
+    HAL_StatusTypeDef status;
+    HAL_GPIO_WritePin(SSD1306_CS_Port, SSD1306_CS_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(SSD1306_DC_Port, SSD1306_DC_Pin, GPIO_PIN_SET);
+    status = HAL_SPI_Transmit(&SSD1306_SPI_PORT, buffer, buff_size,
+                              SSD1306_I2C_TIMEOUT_MS);
+    HAL_GPIO_WritePin(SSD1306_CS_Port, SSD1306_CS_Pin, GPIO_PIN_SET);
+    return status;
+}
 
 void ssd1306_Reset(void) {
     // CS = High (not selected)
@@ -34,18 +71,12 @@ void ssd1306_Reset(void) {
 
 // Send a byte to the command register
 void ssd1306_WriteCommand(uint8_t byte) {
-    HAL_GPIO_WritePin(SSD1306_CS_Port, SSD1306_CS_Pin, GPIO_PIN_RESET); // select OLED
-    HAL_GPIO_WritePin(SSD1306_DC_Port, SSD1306_DC_Pin, GPIO_PIN_RESET); // command
-    HAL_SPI_Transmit(&SSD1306_SPI_PORT, (uint8_t *) &byte, 1, HAL_MAX_DELAY);
-    HAL_GPIO_WritePin(SSD1306_CS_Port, SSD1306_CS_Pin, GPIO_PIN_SET); // un-select OLED
+    (void)ssd1306_WriteCommandStatus(byte);
 }
 
 // Send data
 void ssd1306_WriteData(uint8_t* buffer, size_t buff_size) {
-    HAL_GPIO_WritePin(SSD1306_CS_Port, SSD1306_CS_Pin, GPIO_PIN_RESET); // select OLED
-    HAL_GPIO_WritePin(SSD1306_DC_Port, SSD1306_DC_Pin, GPIO_PIN_SET); // data
-    HAL_SPI_Transmit(&SSD1306_SPI_PORT, buffer, buff_size, HAL_MAX_DELAY);
-    HAL_GPIO_WritePin(SSD1306_CS_Port, SSD1306_CS_Pin, GPIO_PIN_SET); // un-select OLED
+    (void)ssd1306_WriteDataStatus(buffer, buff_size);
 }
 
 #else
@@ -55,6 +86,10 @@ void ssd1306_WriteData(uint8_t* buffer, size_t buff_size) {
 
 // Screenbuffer
 static uint8_t SSD1306_Buffer[SSD1306_BUFFER_SIZE];
+static uint8_t SSD1306_UpdatePage;
+static uint8_t SSD1306_UpdatePhase;
+static uint8_t SSD1306_UpdateColumn;
+static uint8_t SSD1306_UpdateActive;
 
 // Screen object
 static SSD1306_t SSD1306;
@@ -70,7 +105,15 @@ SSD1306_Error_t ssd1306_FillBuffer(uint8_t* buf, uint32_t len) {
 }
 
 /* Initialize the oled screen */
-void ssd1306_Init(void) {
+SSD1306_Error_t ssd1306_Init(void) {
+#define SSD1306_INIT_COMMAND(command_)                                      \
+    do {                                                                    \
+        if (ssd1306_WriteCommandStatus((uint8_t)(command_)) != HAL_OK) {    \
+            SSD1306.Initialized = 0U;                                       \
+            return SSD1306_ERR;                                             \
+        }                                                                   \
+    } while (0)
+
     // Reset OLED
     ssd1306_Reset();
 
@@ -78,97 +121,98 @@ void ssd1306_Init(void) {
     HAL_Delay(100);
 
     // Init OLED
-    ssd1306_SetDisplayOn(0); //display off
+    SSD1306_INIT_COMMAND(0xAE); //display off
+    SSD1306.DisplayOn = 0U;
 
-    ssd1306_WriteCommand(0x20); //Set Memory Addressing Mode
-    ssd1306_WriteCommand(0x00); // 00b,Horizontal Addressing Mode; 01b,Vertical Addressing Mode;
-                                // 10b,Page Addressing Mode (RESET); 11b,Invalid
+    SSD1306_INIT_COMMAND(0x20); //Set Memory Addressing Mode
+    SSD1306_INIT_COMMAND(0x02); // Page Addressing Mode; matches page-by-page update
 
-    ssd1306_WriteCommand(0xB0); //Set Page Start Address for Page Addressing Mode,0-7
+    SSD1306_INIT_COMMAND(0xB0); //Set Page Start Address for Page Addressing Mode,0-7
 
 #ifdef SSD1306_MIRROR_VERT
-    ssd1306_WriteCommand(0xC0); // Mirror vertically
+    SSD1306_INIT_COMMAND(0xC0); // Mirror vertically
 #else
-    ssd1306_WriteCommand(0xC8); //Set COM Output Scan Direction
+    SSD1306_INIT_COMMAND(0xC8); //Set COM Output Scan Direction
 #endif
 
-    ssd1306_WriteCommand(0x00); //---set low column address
-    ssd1306_WriteCommand(0x10); //---set high column address
+    SSD1306_INIT_COMMAND(0x00); //---set low column address
+    SSD1306_INIT_COMMAND(0x10); //---set high column address
 
-    ssd1306_WriteCommand(0x40); //--set start line address - CHECK
+    SSD1306_INIT_COMMAND(0x40); //--set start line address - CHECK
 
-    ssd1306_SetContrast(0xFF);
+    SSD1306_INIT_COMMAND(0x81);
+    SSD1306_INIT_COMMAND(0xFF);
 
 #ifdef SSD1306_MIRROR_HORIZ
-    ssd1306_WriteCommand(0xA0); // Mirror horizontally
+    SSD1306_INIT_COMMAND(0xA0); // Mirror horizontally
 #else
-    ssd1306_WriteCommand(0xA1); //--set segment re-map 0 to 127 - CHECK
+    SSD1306_INIT_COMMAND(0xA1); //--set segment re-map 0 to 127 - CHECK
 #endif
 
 #ifdef SSD1306_INVERSE_COLOR
-    ssd1306_WriteCommand(0xA7); //--set inverse color
+    SSD1306_INIT_COMMAND(0xA7); //--set inverse color
 #else
-    ssd1306_WriteCommand(0xA6); //--set normal color
+    SSD1306_INIT_COMMAND(0xA6); //--set normal color
 #endif
 
 // Set multiplex ratio.
 #if (SSD1306_HEIGHT == 128)
     // Found in the Luma Python lib for SH1106.
-    ssd1306_WriteCommand(0xFF);
+    SSD1306_INIT_COMMAND(0xFF);
 #else
-    ssd1306_WriteCommand(0xA8); //--set multiplex ratio(1 to 64) - CHECK
+    SSD1306_INIT_COMMAND(0xA8); //--set multiplex ratio(1 to 64) - CHECK
 #endif
 
 #if (SSD1306_HEIGHT == 32)
-    ssd1306_WriteCommand(0x1F); //
+    SSD1306_INIT_COMMAND(0x1F); //
 #elif (SSD1306_HEIGHT == 64)
-    ssd1306_WriteCommand(0x3F); //
+    SSD1306_INIT_COMMAND(0x3F); //
 #elif (SSD1306_HEIGHT == 128)
-    ssd1306_WriteCommand(0x3F); // Seems to work for 128px high displays too.
+    SSD1306_INIT_COMMAND(0x3F); // Seems to work for 128px high displays too.
 #else
 #error "Only 32, 64, or 128 lines of height are supported!"
 #endif
 
-    ssd1306_WriteCommand(0xA4); //0xa4,Output follows RAM content;0xa5,Output ignores RAM content
+    SSD1306_INIT_COMMAND(0xA4); //0xa4,Output follows RAM content
 
-    ssd1306_WriteCommand(0xD3); //-set display offset - CHECK
-    ssd1306_WriteCommand(0x00); //-not offset
+    SSD1306_INIT_COMMAND(0xD3); //-set display offset - CHECK
+    SSD1306_INIT_COMMAND(0x00); //-not offset
 
-    ssd1306_WriteCommand(0xD5); //--set display clock divide ratio/oscillator frequency
-    ssd1306_WriteCommand(0xF0); //--set divide ratio
+    SSD1306_INIT_COMMAND(0xD5); //--set display clock divide ratio/oscillator frequency
+    SSD1306_INIT_COMMAND(0xF0); //--set divide ratio
 
-    ssd1306_WriteCommand(0xD9); //--set pre-charge period
-    ssd1306_WriteCommand(0x22); //
+    SSD1306_INIT_COMMAND(0xD9); //--set pre-charge period
+    SSD1306_INIT_COMMAND(0x22); //
 
-    ssd1306_WriteCommand(0xDA); //--set com pins hardware configuration - CHECK
+    SSD1306_INIT_COMMAND(0xDA); //--set com pins hardware configuration - CHECK
 #if (SSD1306_HEIGHT == 32)
-    ssd1306_WriteCommand(0x02);
+    SSD1306_INIT_COMMAND(0x02);
 #elif (SSD1306_HEIGHT == 64)
-    ssd1306_WriteCommand(0x12);
+    SSD1306_INIT_COMMAND(0x12);
 #elif (SSD1306_HEIGHT == 128)
-    ssd1306_WriteCommand(0x12);
+    SSD1306_INIT_COMMAND(0x12);
 #else
 #error "Only 32, 64, or 128 lines of height are supported!"
 #endif
 
-    ssd1306_WriteCommand(0xDB); //--set vcomh
-    ssd1306_WriteCommand(0x20); //0x20,0.77xVcc
+    SSD1306_INIT_COMMAND(0xDB); //--set vcomh
+    SSD1306_INIT_COMMAND(0x20); //0x20,0.77xVcc
 
-    ssd1306_WriteCommand(0x8D); //--set DC-DC enable
-    ssd1306_WriteCommand(0x14); //
-    ssd1306_SetDisplayOn(1); //--turn on SSD1306 panel
+    SSD1306_INIT_COMMAND(0x8D); //--set DC-DC enable
+    SSD1306_INIT_COMMAND(0x14); //
+    SSD1306_INIT_COMMAND(0xAF); //--turn on SSD1306 panel
+    SSD1306.DisplayOn = 1U;
 
     // Clear screen
     ssd1306_Fill(Black);
-    
-    // Flush buffer to screen
-    ssd1306_UpdateScreen();
     
     // Set default values for screen object
     SSD1306.CurrentX = 0;
     SSD1306.CurrentY = 0;
     
     SSD1306.Initialized = 1;
+    return SSD1306_OK;
+#undef SSD1306_INIT_COMMAND
 }
 
 /* Fill the whole screen with the given color */
@@ -178,18 +222,81 @@ void ssd1306_Fill(SSD1306_COLOR color) {
 
 /* Write the screenbuffer with changed to the screen */
 void ssd1306_UpdateScreen(void) {
-    // Write data to each page of RAM. Number of pages
-    // depends on the screen height:
-    //
-    //  * 32px   ==  4 pages
-    //  * 64px   ==  8 pages
-    //  * 128px  ==  16 pages
-    for(uint8_t i = 0; i < SSD1306_HEIGHT/8; i++) {
-        ssd1306_WriteCommand(0xB0 + i); // Set the current RAM page address.
-        ssd1306_WriteCommand(0x00 + SSD1306_X_OFFSET_LOWER);
-        ssd1306_WriteCommand(0x10 + SSD1306_X_OFFSET_UPPER);
-        ssd1306_WriteData(&SSD1306_Buffer[SSD1306_WIDTH*i],SSD1306_WIDTH);
+    SSD1306_UpdateStatus_t status;
+
+    ssd1306_UpdateScreenBegin();
+    do {
+        status = ssd1306_UpdateScreenStep();
+    } while (status == SSD1306_UPDATE_BUSY);
+}
+
+void ssd1306_UpdateScreenBegin(void) {
+    SSD1306_UpdatePage = 0U;
+    SSD1306_UpdatePhase = 0U;
+    SSD1306_UpdateColumn = 0U;
+    SSD1306_UpdateActive = 1U;
+}
+
+SSD1306_UpdateStatus_t ssd1306_UpdateScreenStep(void) {
+    HAL_StatusTypeDef hal_status;
+
+    if (SSD1306_UpdateActive == 0U) {
+        return SSD1306_UPDATE_IDLE;
     }
+
+    switch (SSD1306_UpdatePhase) {
+        case 0U:
+            hal_status = ssd1306_WriteCommandStatus(
+                (uint8_t)(0xB0U + SSD1306_UpdatePage));
+            break;
+        case 1U:
+            hal_status = ssd1306_WriteCommandStatus(
+                (uint8_t)(0x00U + SSD1306_X_OFFSET_LOWER));
+            break;
+        case 2U:
+            hal_status = ssd1306_WriteCommandStatus(
+                (uint8_t)(0x10U + SSD1306_X_OFFSET_UPPER));
+            break;
+        case 3U:
+        default: {
+            uint8_t remaining = (uint8_t)(SSD1306_WIDTH -
+                                           SSD1306_UpdateColumn);
+            uint8_t chunk = (remaining > SSD1306_I2C_CHUNK_SIZE) ?
+                            SSD1306_I2C_CHUNK_SIZE : remaining;
+            hal_status = ssd1306_WriteDataStatus(
+                &SSD1306_Buffer[(uint32_t)SSD1306_WIDTH *
+                                SSD1306_UpdatePage +
+                                SSD1306_UpdateColumn],
+                chunk);
+            break;
+        }
+    }
+
+    if (hal_status != HAL_OK) {
+        SSD1306_UpdateActive = 0U;
+        return SSD1306_UPDATE_ERROR;
+    }
+
+    if (SSD1306_UpdatePhase < 3U) {
+        SSD1306_UpdatePhase++;
+    } else {
+        SSD1306_UpdateColumn = (uint8_t)(SSD1306_UpdateColumn +
+                                         SSD1306_I2C_CHUNK_SIZE);
+        if (SSD1306_UpdateColumn >= SSD1306_WIDTH) {
+            SSD1306_UpdateColumn = 0U;
+            SSD1306_UpdatePhase = 0U;
+            SSD1306_UpdatePage++;
+            if (SSD1306_UpdatePage >= (SSD1306_HEIGHT / 8U)) {
+                SSD1306_UpdateActive = 0U;
+                return SSD1306_UPDATE_COMPLETE;
+            }
+        }
+    }
+    return SSD1306_UPDATE_BUSY;
+}
+
+void ssd1306_UpdateScreenAbort(void) {
+    SSD1306_UpdateActive = 0U;
 }
 
 /*

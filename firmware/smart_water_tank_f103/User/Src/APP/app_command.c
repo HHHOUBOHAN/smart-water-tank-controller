@@ -1,221 +1,218 @@
-
 #include "APP/app_command.h"
-#include "APP/app_state.h"//获取水泵状态
-#include "BSP/key.h"
-#include <stdint.h>
-#include <stddef.h>
-#include <stdbool.h>
 
-#define APP_COMMAND_QUEUE_SIZE 16
+#include "APP/app_state.h"
+#include "BSP/key.h"
+
+#define APP_COMMAND_QUEUE_SIZE  16U
 
 static AppCommand_t app_command_queue[APP_COMMAND_QUEUE_SIZE];
 static uint8_t app_command_head;
 static uint8_t app_command_tail;
-static uint8_t app_command_count;//有效命令数
-
+static uint8_t app_command_count;
 static uint32_t app_command_lost_count;
 static uint32_t app_command_cancelled_count;
-static bool stop_adjust_suppressed_until_release;//
+static bool app_command_stop_latched;
 
-//判断命令类型是否合法
-static bool AppCommand_IsTypeValid(AppCommandType_t type)
+static bool AppCommand_IsValid(AppCommandType_t type,
+                               AppCommandSource_t source)
 {
-    return
-        ((uint32_t)type > (uint32_t)APP_COMMAND_NONE) &&
-        ((uint32_t)type < (uint32_t)APP_COMMAND_COUNT);
+    return ((uint32_t)type > (uint32_t)APP_COMMAND_NONE) &&
+           ((uint32_t)type < (uint32_t)APP_COMMAND_COUNT) &&
+           ((uint32_t)source < (uint32_t)APP_COMMAND_SOURCE_COUNT);
 }
 
-//判断命令来源是否合法
-static bool  AppCommand_IsSourceValid(AppCommandSource_t source)
+static void AppCommand_ClearPending(void)
 {
-    return
-        ((uint32_t)source > (uint32_t)APP_COMMAND_SOURCE_KEY) &&
-        ((uint32_t)source < (uint32_t)APP_COMMAND_SOURCE_COUNT);
+    app_command_cancelled_count += app_command_count;
+    app_command_head = 0U;
+    app_command_tail = 0U;
+    app_command_count = 0U;
 }
 
-//清空当前队列
-static void AppCommand_ClearQueue(void)
+void AppCommand_Init(void)
 {
-    app_command_head = 0;
-    app_command_tail = 0;
-    app_command_count = 0;
+    app_command_head = 0U;
+    app_command_tail = 0U;
+    app_command_count = 0U;
+    app_command_lost_count = 0U;
+    app_command_cancelled_count = 0U;
+    app_command_stop_latched = false;
 }
- 
- 
-//向队尾写入一条命令
-static bool AppCommand_PushBack(
-    AppCommandType_t type,
-    AppCommandSource_t source,
-    uint32_t timestamp_ms
-)
-{
 
+bool AppCommand_Post(AppCommandType_t type,
+                     AppCommandSource_t source,
+                     uint32_t timestamp_ms)
+{
     AppCommand_t *command;
-    //
 
-    //判断队列是否满
-    if(app_command_count>APP_COMMAND_QUEUE_SIZE)
+    if (!AppCommand_IsValid(type, source))
     {
         return false;
     }
-
-    //获取位置 并进行赋值
-    command=&app_command_queue[app_command_tail];
-    command->source=source;
-    command->timestamp_ms=timestamp_ms;
-    command->type=type;
-
-    app_command_tail++;
-    
-    if(app_command_tail>=APP_COMMAND_QUEUE_SIZE)
+    if ((type == APP_COMMAND_STOP) &&
+        (AppState_GetPage() == APP_PAGE_MAIN))
     {
-        app_command_tail=0;
+        AppCommand_ClearPending();
+        app_command_stop_latched = true;
+        return true;
+    }
+    if (app_command_count >= APP_COMMAND_QUEUE_SIZE)
+    {
+        app_command_lost_count++;
+        return false;
     }
 
+    command = &app_command_queue[app_command_tail];
+    command->type = type;
+    command->source = source;
+    command->timestamp_ms = timestamp_ms;
+    app_command_tail = (uint8_t)((app_command_tail + 1U) %
+                                 APP_COMMAND_QUEUE_SIZE);
     app_command_count++;
     return true;
 }
 
-//处理主页面的按键命令
-static void AppCommand_HandleMainPageKey(
-    const Key_Event_t *key_event
-)
+static void AppCommand_HandleMain(const Key_Event_t *event)
 {
-    if(key_event==NULL)
+    AppCommandType_t command = APP_COMMAND_NONE;
+
+    if ((event->key == KEY_ID_MODE) &&
+        (event->type == KEY_EVENT_SHORT_PRESS))
     {
-        return;
+        command = APP_COMMAND_MODE_TOGGLE;
     }
-   
-    switch(key_event->key)
+    else if ((event->key == KEY_ID_MODE) &&
+             (event->type == KEY_EVENT_LONG_PRESS))
     {
-        //短按：自动/手动切换  长按：参数配置页面
-        case KEY_ID_MODE:
+        command = APP_COMMAND_ENTER_CONFIG;
+    }
+    else if ((event->key == KEY_ID_START) &&
+             (event->type == KEY_EVENT_DOWN))
+    {
+        command = APP_COMMAND_START;
+    }
+    else if ((event->key == KEY_ID_STOP) &&
+             (event->type == KEY_EVENT_DOWN))
+    {
+        command = APP_COMMAND_STOP;
+    }
+    else if ((event->key == KEY_ID_MUTE) &&
+             (event->type == KEY_EVENT_SHORT_PRESS))
+    {
+        command = APP_COMMAND_MUTE_TOGGLE;
+    }
+    else if ((event->key == KEY_ID_MUTE) &&
+             (event->type == KEY_EVENT_LONG_PRESS))
+    {
+        command = APP_COMMAND_PRESSURE_TARE;
+    }
+
+    if (command != APP_COMMAND_NONE)
+    {
+        (void)AppCommand_Post(command,
+                              APP_COMMAND_SOURCE_KEY,
+                              event->timestamp_ms);
+    }
+}
+
+static void AppCommand_HandleConfig(const Key_Event_t *event)
+{
+    AppCommandType_t command = APP_COMMAND_NONE;
+
+    if ((event->key == KEY_ID_MODE) &&
+        (event->type == KEY_EVENT_SHORT_PRESS))
+    {
+        command = APP_COMMAND_CONFIG_NEXT;
+    }
+    else if ((event->key == KEY_ID_MODE) &&
+             (event->type == KEY_EVENT_LONG_PRESS))
+    {
+        command = APP_COMMAND_CONFIG_SAVE;
+    }
+    else if ((event->key == KEY_ID_START) &&
+             ((event->type == KEY_EVENT_DOWN) ||
+              (event->type == KEY_EVENT_REPEAT)))
+    {
+        command = APP_COMMAND_CONFIG_INCREASE;
+    }
+    else if ((event->key == KEY_ID_STOP) &&
+             ((event->type == KEY_EVENT_DOWN) ||
+              (event->type == KEY_EVENT_REPEAT)))
+    {
+        command = APP_COMMAND_CONFIG_DECREASE;
+    }
+    else if ((event->key == KEY_ID_MUTE) &&
+             (event->type == KEY_EVENT_SHORT_PRESS))
+    {
+        command = APP_COMMAND_MUTE_TOGGLE;
+    }
+    else if ((event->key == KEY_ID_MUTE) &&
+             (event->type == KEY_EVENT_LONG_PRESS))
+    {
+        command = APP_COMMAND_CONFIG_CANCEL;
+    }
+
+    if (command != APP_COMMAND_NONE)
+    {
+        (void)AppCommand_Post(command,
+                              APP_COMMAND_SOURCE_KEY,
+                              event->timestamp_ms);
+    }
+}
+
+void AppCommand_Update(void)
+{
+    Key_Event_t event;
+
+    while (Key_GetEvent(&event))
+    {
+        if (AppState_GetPage() == APP_PAGE_CONFIG)
         {
-            if(key_event->type==KEY_EVENT_SHORT_PRESS)
-            {
-                //不考虑返回值 这个栈是16 一般不会栈溢出 以后如果扩展  就添加一个日志  
-                (void)AppCommand_PushBack(
-                    APP_COMMAND_MODE_TOGGLE,//模式切换
-                    APP_COMMAND_SOURCE_KEY,
-                    key_event->timestamp_ms
-                );
-            }
-            else if(key_event->type==KEY_EVENT_LONG_PRESS)
-            {
-                (void)AppCommand_PushBack(
-                    APP_COMMAND_ENTER_CONFIG,
-                    APP_COMMAND_SOURCE_KEY,
-                    key_event->timestamp_ms
-                );
-            }
-            break;
+            AppCommand_HandleConfig(&event);
         }
-        //自动：主页面没有用途    手动： 主页面进行这个水泵的开启
-        case KEY_ID_START:
+        else
         {
-             
-            //业务控制层（App_Run / AppControl 处理命令处）
-            //拿到 APP_COMMAND_START 命令之后，读取当前运行模式，再差异化执行
-            if(key_event->type==KEY_EVENT_SHORT_PRESS)
-            {
-                (void)AppCommand_PushBack(
-                     APP_COMMAND_START, 
-                    APP_COMMAND_SOURCE_KEY,
-                    key_event->timestamp_ms
-                );
-            }
-            break;
-        }
-        //
-        case KEY_ID_STOP:
-        {
-            if(key_event->type==KEY_EVENT_SHORT_PRESS)
-            {
-                (void)AppCommand_PushBack(
-                    APP_COMMAND_STOP, 
-                    APP_COMMAND_SOURCE_KEY,
-                    key_event->timestamp_ms
-                );
-            }
-            break;
-        }
-        case KEY_ID_MUTE:
-        {
-            if(key_event->type==KEY_EVENT_SHORT_PRESS)
-            {
-                (void)AppCommand_PushBack(
-                    APP_COMMAND_MUTE_TOGGLE, 
-                    APP_COMMAND_SOURCE_KEY,
-                    key_event->timestamp_ms
-                );
-            }
-            break;
-        }
-        default:
-        {
-            break;
+            AppCommand_HandleMain(&event);
         }
     }
 }
 
-//处理参数设置页面的按键事件。
-static void AppCommand_HandleConfigPageKey(
-    const Key_Event_t *key_event 
-)
+bool AppCommand_Get(AppCommand_t *command)
 {
-    bool pump_is_running;
-
-    if(key_event==NULL)
+    if ((command == 0) || (app_command_count == 0U))
     {
-        return;
+        return false;
     }
-
-    pump_is_running = AppState_GetPumpCommand();
-
-    switch(key_event->key)
-    {
-        //短按下一项  长按保存退出
-        case KEY_ID_MODE:
-        {
-
-            break;
-        }
-        //短按：单加 长按：连加
-        case KEY_ID_START:
-        {
-            break;
-        }
-        //短按：单加 长按： 连加
-        case KEY_ID_STOP:
-        {
-            break;
-
-        }
-        //短按：不保存退出
-        case KEY_ID_MUTE:
-        {
-            break;
-
-        }
-        default:
-        {
-            break;
-        }
-    }
+    *command = app_command_queue[app_command_head];
+    app_command_head = (uint8_t)((app_command_head + 1U) %
+                                 APP_COMMAND_QUEUE_SIZE);
+    app_command_count--;
+    return true;
 }
 
-
-
-
-//初始化app模块
-void AppCommand_Init(void)
+bool AppCommand_TakeStopLatch(void)
 {
-
+    const bool latched = app_command_stop_latched;
+    app_command_stop_latched = false;
+    return latched;
 }
 
-// 读取按键事件，并根据当前页面转换为APP命令。
+bool AppCommand_HasPending(void)
+{
+    return (app_command_count != 0U);
+}
 
+uint8_t AppCommand_GetPendingCount(void)
+{
+    return app_command_count;
+}
 
-//发送统一APP命令。
+uint32_t AppCommand_GetLostCount(void)
+{
+    return app_command_lost_count;
+}
 
-//从命令队列取出一条命令
+uint32_t AppCommand_GetCancelledCount(void)
+{
+    return app_command_cancelled_count;
+}

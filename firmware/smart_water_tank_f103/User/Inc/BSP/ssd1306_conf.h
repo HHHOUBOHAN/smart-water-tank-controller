@@ -48,11 +48,7 @@
 #define SSD1306_INCLUDE_FONT_6x8
 #define SSD1306_INCLUDE_FONT_7x10
 #define SSD1306_INCLUDE_FONT_11x18
-#define SSD1306_INCLUDE_FONT_16x26
-
-#define SSD1306_INCLUDE_FONT_16x24
-
-#define SSD1306_INCLUDE_FONT_16x15
+/* V2 uses 11x18 for the two measured values and CONFIG value. */
 
 // The width of the screen can be set using this
 // define. The default value is 128.
