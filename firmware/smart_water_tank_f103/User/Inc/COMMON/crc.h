@@ -1,0 +1,1 @@
+"这是开发者A的多人协作测试" | Out-File collaboration_test_A.txt -Encoding utf8g'i't
