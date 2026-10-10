@@ -1,7 +1,9 @@
-# STM32 / VS Code 本机自动生成配置
+# STM32 / VS Code 本机配置
 .clangd
 .settings/
 
-build
+# Build
+build/
+
+# CubeMX 临时文件
 mx.scratch
-!.settings.settings/
